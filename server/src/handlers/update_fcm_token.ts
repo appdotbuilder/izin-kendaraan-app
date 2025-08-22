@@ -1,18 +1,32 @@
+import { db } from '../db';
+import { usersTable } from '../db/schema';
 import { type UpdateFcmTokenInput, type User } from '../schema';
+import { eq } from 'drizzle-orm';
 
-export async function updateFcmToken(input: UpdateFcmTokenInput): Promise<User> {
-    // This is a placeholder declaration! Real code should be implemented here.
-    // The goal of this handler is updating the FCM token for a specific user
-    // to enable push notifications. This is called when the mobile app
-    // receives a new FCM token or when the user logs in.
-    return Promise.resolve({
-        id: input.user_id,
-        nik: "1234567890",
-        username: "sample_user",
-        password: "hashed_password",
-        nama: "Sample User",
-        role: "Karyawan" as const,
-        fcm_token: input.fcm_token,
-        created_at: new Date()
-    } as User);
-}
+export const updateFcmToken = async (input: UpdateFcmTokenInput): Promise<User> => {
+  try {
+    // Update FCM token for the specified user
+    const result = await db.update(usersTable)
+      .set({
+        fcm_token: input.fcm_token
+      })
+      .where(eq(usersTable.id, input.user_id))
+      .returning()
+      .execute();
+
+    // Check if user was found and updated
+    if (result.length === 0) {
+      throw new Error(`User with ID ${input.user_id} not found`);
+    }
+
+    // Return the updated user
+    const updatedUser = result[0];
+    return {
+      ...updatedUser,
+      created_at: updatedUser.created_at
+    };
+  } catch (error) {
+    console.error('FCM token update failed:', error);
+    throw error;
+  }
+};
